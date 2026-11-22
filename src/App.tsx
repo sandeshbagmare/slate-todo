@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Priority, SortKey, StatusFilter, Task, TaskList, Theme, ViewId } from "./types";
 import { INBOX, STARTER_LISTS, starterTasks } from "./lib/seed";
 import { load, save, uid } from "./lib/storage";
-import { longToday, todayKey } from "./lib/date";
 import { Sidebar } from "./components/Sidebar";
 import type { Counts } from "./components/Sidebar";
 import { Composer } from "./components/Composer";
@@ -18,11 +17,19 @@ import { App as NativeApp } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { CalendarView } from "./components/CalendarView";
 import { MobileTabs } from "./components/MobileTabs";
+import { StatsView } from "./components/StatsView";
+import { CommandPalette } from "./components/CommandPalette";
+import { emptyStreak, recordCompletion, repairStreak, summarize } from "./lib/streak";
+import type { StreakState } from "./lib/streak";
+import { nextDue, RECURRENCE_META } from "./lib/recurrence";
+import { formatDue, longToday, todayKey } from "./lib/date";
 
 const LIST_COLORS = ["#8b7bff", "#22d3ee", "#34d399", "#ff8a4c", "#f472b6", "#facc15"];
 
 const byDue = (a: Task, b: Task) =>
   (a.due ?? "9999-12-31").localeCompare(b.due ?? "9999-12-31");
+
+const formatShort = formatDue;
 
 function sortTasks(list: Task[], sort: SortKey, doneLast: boolean): Task[] {
   const arr = [...list];
@@ -49,10 +56,13 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropId, setDropId] = useState<string | null>(null);
+  const [streak, setStreak] = useState<StreakState>(() => load<StreakState>("slate.streak", emptyStreak));
+  const [palette, setPalette] = useState(false);
 
   const composerRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const undoRef = useRef<(() => void) | null>(null);
+  const importRef = useRef<HTMLInputElement>(null);
 
   /* ---------- persistence ---------- */
   useEffect(() => save("slate.tasks", tasks), [tasks]);
@@ -60,6 +70,7 @@ export default function App() {
   useEffect(() => save("slate.theme", theme), [theme]);
   useEffect(() => save("slate.view", view), [view]);
   useEffect(() => save("slate.sort", sort), [sort]);
+  useEffect(() => save("slate.streak", streak), [streak]);
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
@@ -111,11 +122,14 @@ export default function App() {
 
   const activeList = lists.find((l) => `list:${l.id}` === view);
   const isCalendar = view === "calendar";
+  const isStats = view === "stats";
+  const streakSummary = summarize(streak);
   const scheduled = tasks.filter((t) => t.due !== null).length;
   const title =
     view === "calendar" ? "Calendar"
     : view === "today" ? "Today"
     : view === "upcoming" ? "Upcoming"
+    : view === "stats" ? "Stats & streaks"
     : view === "all" ? "All tasks"
     : view === "completed" ? "Completed"
     : activeList?.name ?? "Tasks";
@@ -139,6 +153,7 @@ export default function App() {
       listId: draft.listId,
       createdAt: Date.now(),
       completedAt: null,
+      recurrence: draft.recurrence ?? "none",
     };
     setTasks((prev) => [task, ...prev]);
 
@@ -165,12 +180,48 @@ export default function App() {
     }
   };
 
-  const toggleTask = (id: string) =>
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, done: !t.done, completedAt: !t.done ? Date.now() : null } : t,
-      ),
-    );
+  const toggleTask = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    if (task.done) {
+      // un-completing also removes the occurrence it spawned
+      setTasks((prev) =>
+        prev
+          .filter((t) => t.spawnedFrom !== task.id)
+          .map((t) => (t.id === id ? { ...t, done: false, completedAt: null } : t)),
+      );
+      return;
+    }
+
+    const repeats = !!task.recurrence && task.recurrence !== "none";
+    const upcoming = repeats && task.due ? nextDue(task.due, task.recurrence!) : null;
+
+    setTasks((prev) => {
+      const next = prev.map((t) =>
+        t.id === id ? { ...t, done: true, completedAt: Date.now() } : t,
+      );
+      if (repeats && upcoming) {
+        next.unshift({
+          ...task,
+          id: uid(),
+          due: upcoming,
+          done: false,
+          completedAt: null,
+          createdAt: Date.now(),
+          spawnedFrom: task.id,
+        });
+      }
+      return next;
+    });
+
+    if (repeats && upcoming && streak.enabled) {
+      setStreak((s) => recordCompletion(s));
+      pushToast(`${RECURRENCE_META[task.recurrence!].short} · next on ${formatShort(upcoming)}`);
+    } else if (streak.enabled) {
+      setStreak((s) => recordCompletion(s));
+    }
+  };
 
   const renameTask = (id: string, next: string) =>
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, title: next } : t)));
@@ -200,6 +251,50 @@ export default function App() {
       label: "Undo",
       run: () => setTasks(snapshot),
     });
+  };
+
+  /* ---------- data portability ---------- */
+  const exportData = () => {
+    const payload = { version: 1, exportedAt: new Date().toISOString(), tasks, lists, streak };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `slate-backup-${todayKey()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    pushToast("Backup downloaded");
+  };
+
+  const importData = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result)) as {
+          tasks?: Task[];
+          lists?: TaskList[];
+          streak?: StreakState;
+        };
+        if (!Array.isArray(parsed.tasks) || !Array.isArray(parsed.lists)) {
+          throw new Error("shape");
+        }
+        const before = { tasks, lists, streak };
+        setTasks(parsed.tasks);
+        setLists(parsed.lists);
+        if (parsed.streak) setStreak(parsed.streak);
+        pushToast(`Imported ${parsed.tasks.length} tasks`, {
+          label: "Undo",
+          run: () => {
+            setTasks(before.tasks);
+            setLists(before.lists);
+            setStreak(before.streak);
+          },
+        });
+      } catch {
+        pushToast("That file is not a Slate backup");
+      }
+    };
+    reader.readAsText(file);
   };
 
   /* ---------- list actions ---------- */
@@ -283,6 +378,12 @@ export default function App() {
         setQuery("");
         setShortcuts(false);
         setSidebarOpen(false);
+        setPalette(false);
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette((v) => !v);
         return;
       }
       if (!typing && (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
@@ -322,6 +423,7 @@ export default function App() {
   const openRowForList = (id: string) => lists.find((l) => l.id === id);
   const showListBadge = view === "today" || view === "upcoming" || view === "all" || view === "completed";
   const showFilters = view === "all" || view.startsWith("list:");
+  const hideTaskChrome = isCalendar || isStats;
 
   return (
     <div className="relative min-h-screen text-ink">
@@ -339,6 +441,10 @@ export default function App() {
           onRenameList={renameList}
           onDeleteList={deleteList}
           onOpenShortcuts={() => setShortcuts(true)}
+          streakDays={streakSummary.current}
+          onOpenPalette={() => setPalette(true)}
+          onExport={exportData}
+          onImport={() => importRef.current?.click()}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -386,17 +492,23 @@ export default function App() {
                 <span className="hidden text-muted/40 sm:inline">·</span>
                 <span className="hidden tabular-nums sm:inline">{counts.today} due today</span>
                 <span className="text-muted/40">·</span>
-                <span className="tabular-nums">{isCalendar ? `${scheduled} scheduled` : `${counts.all} open`}</span>
+                <span className="tabular-nums">
+                  {isCalendar
+                    ? `${scheduled} scheduled`
+                    : isStats
+                      ? `${streakSummary.current} day streak`
+                      : `${counts.all} open`}
+                </span>
               </div>
               <h1 className="mt-1 flex items-center gap-2.5 text-[26px] font-semibold tracking-[-0.03em] sm:text-[30px]">
                 {title}
                 <span className="rounded-lg border border-line px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted">
-                  {visible.length}
+                  {isStats ? streakSummary.activeDays : visible.length}
                 </span>
               </h1>
             </div>
 
-            {!isCalendar && (
+            {!hideTaskChrome && (
             <div className="flex items-center gap-2">
               <SearchBox query={query} onQuery={setQuery} inputRef={searchRef} className="hidden w-[210px] sm:block" />
               <button
@@ -411,13 +523,25 @@ export default function App() {
             )}
           </header>
 
-          {!isCalendar && (
+          {!hideTaskChrome && (
           <div className="mt-3 sm:hidden">
             <SearchBox query={query} onQuery={setQuery} inputRef={searchRef} />
           </div>
           )}
 
-          {isCalendar ? (
+          {isStats ? (
+            <StatsView
+              tasks={tasks}
+              lists={lists}
+              streak={streak}
+              onToggleStreak={() => setStreak((s) => ({ ...s, enabled: !s.enabled }))}
+              onRepair={() => {
+                setStreak((s) => repairStreak(s));
+                pushToast("Freeze used — yesterday is patched");
+              }}
+              onSetGoal={(goal) => setStreak((s) => ({ ...s, goal }))}
+            />
+          ) : isCalendar ? (
             <CalendarView
               tasks={tasks}
               lists={lists}
@@ -524,7 +648,7 @@ export default function App() {
           )}
         </main>
 
-        {!isCalendar && <FocusPanel tasks={tasks} />}
+        {!hideTaskChrome && <FocusPanel tasks={tasks} />}
       </div>
 
       <MobileTabs
@@ -532,6 +656,36 @@ export default function App() {
         listsActive={view.startsWith("list:") || sidebarOpen}
         onSelect={setView}
         onOpenLists={() => setSidebarOpen(true)}
+      />
+      {palette && (
+        <CommandPalette
+          open={palette}
+        onClose={() => setPalette(false)}
+        tasks={tasks}
+        lists={lists}
+        onGo={setView}
+        onComplete={toggleTask}
+        onNewTask={() => {
+          setView("all");
+          window.setTimeout(() => composerRef.current?.focus(), 60);
+        }}
+        onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
+        onExport={exportData}
+        onImport={() => importRef.current?.click()}
+          onOpenShortcuts={() => setShortcuts(true)}
+        />
+      )}
+      <input
+        ref={importRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        aria-label="Import Slate backup"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) importData(file);
+          e.target.value = "";
+        }}
       />
       <Toast data={toast} onClose={() => setToast(null)} />
       <ShortcutsModal open={shortcuts} onClose={() => setShortcuts(false)} />

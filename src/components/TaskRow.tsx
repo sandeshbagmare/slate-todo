@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Task, TaskList } from "../types";
 import { PRIORITY_META } from "../types";
+import { RECURRENCE_META } from "../lib/recurrence";
 import { dueTone, formatDue } from "../lib/date";
 import { Icon } from "./Icons";
 
@@ -213,6 +214,17 @@ export function TaskRow({
             <Icon name="flag" className="h-3 w-3" />
             {task.priority > 0 ? PRIORITY_META[task.priority].label : "Priority"}
           </button>
+
+          {/* repeat */}
+          {task.recurrence && task.recurrence !== "none" && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border border-accent/25 bg-accent/10 px-1.5 py-0.5 text-[11.5px] text-accent"
+              title={`Repeats ${RECURRENCE_META[task.recurrence].label.toLowerCase()}`}
+            >
+              <Icon name="repeat" className="h-3 w-3" />
+              {RECURRENCE_META[task.recurrence].short}
+            </span>
+          )}
 
           {/* list badge */}
           {showList && list && (

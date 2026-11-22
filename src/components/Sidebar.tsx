@@ -23,6 +23,10 @@ interface SidebarProps {
   onRenameList: (id: string, name: string) => void;
   onDeleteList: (id: string) => void;
   onOpenShortcuts: () => void;
+  streakDays: number;
+  onOpenPalette: () => void;
+  onExport: () => void;
+  onImport: () => void;
   open: boolean;
   onClose: () => void;
 }
@@ -31,6 +35,7 @@ const NAV: { id: ViewId; label: string; icon: IconName; count?: keyof Counts }[]
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "today", label: "Today", icon: "target", count: "today" },
   { id: "upcoming", label: "Upcoming", icon: "clock", count: "upcoming" },
+  { id: "stats", label: "Stats & streaks", icon: "chart" },
   { id: "all", label: "All tasks", icon: "layers", count: "all" },
   { id: "completed", label: "Completed", icon: "checkCircle", count: "completed" },
 ];
@@ -155,6 +160,10 @@ export function Sidebar({
   onRenameList,
   onDeleteList,
   onOpenShortcuts,
+  streakDays,
+  onOpenPalette,
+  onExport,
+  onImport,
   open,
   onClose,
 }: SidebarProps) {
@@ -196,7 +205,18 @@ export function Sidebar({
               <Icon name="check" className="h-[18px] w-[18px]" strokeWidth={2.4} />
             </span>
             <div className="min-w-0">
-              <div className="text-[15px] font-semibold tracking-tight">Slate</div>
+              <div className="flex items-center gap-1.5 text-[15px] font-semibold tracking-tight">
+                Slate
+                {streakDays > 0 && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10.5px] font-medium text-accent"
+                    title={`${streakDays} day streak`}
+                  >
+                    <Icon name="fire" className="h-3 w-3" />
+                    {streakDays}
+                  </span>
+                )}
+              </div>
               <div className="text-[11px] text-muted">Personal workspace</div>
             </div>
             <button
@@ -313,6 +333,33 @@ export function Sidebar({
               >
                 <Icon name="moon" className="h-3.5 w-3.5" />
                 Dark
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenPalette}
+              className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] text-muted transition hover:bg-surface2 hover:text-ink"
+            >
+              <Icon name="command" className="h-4 w-4" />
+              Command palette
+              <kbd className="ml-auto rounded border border-line px-1.5 py-0.5 text-[10px] text-muted">⌘K</kbd>
+            </button>
+            <div className="flex items-center gap-2 border-t border-line pt-2">
+              <button
+                type="button"
+                onClick={onExport}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line px-2 py-1.5 text-[11.5px] text-muted transition hover:border-accent/40 hover:text-accent"
+              >
+                <Icon name="download" className="h-3.5 w-3.5" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={onImport}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line px-2 py-1.5 text-[11.5px] text-muted transition hover:border-accent/40 hover:text-accent"
+              >
+                <Icon name="upload" className="h-3.5 w-3.5" />
+                Import
               </button>
             </div>
             <button

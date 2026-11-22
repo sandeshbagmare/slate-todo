@@ -82,6 +82,42 @@ src/
 - Phones swap the grid chips for dot markers and move navigation to the bottom
   tab bar (Calendar · Today · Upcoming · Lists).
 
+## Streaks and stats
+
+- **Streak engine** (`src/lib/streak.ts`, pure functions): a day counts when at least
+  one task is completed on it; the run ends today, or yesterday while today is still
+  open. Every 7 days adds a **freeze** (max 3) that can patch one missed day, so a
+  single bad day does not wipe a long run.
+- **Stats view**: streak hero with a daily goal (2/3/5), 13-week consistency heatmap
+  with weekday labels, last-7-days momentum, records (best streak, active days, tasks
+  done, best day), per-list progress and recently finished tasks.
+- Streaks are a **setting**: `Streaks on/off` in the hero stops all recording, and
+  `slate.streak` is plain JSON in localStorage.
+
+## Power features
+
+- **Recurring tasks** — daily / weekly / monthly. Completing an occurrence marks it done
+  and schedules the next one; un-completing removes the spawned occurrence. Repeats also
+  respect month-end clamping (Jan 31 → Feb 28).
+- **Quick add** (`src/lib/nlp.ts`) — type `Call the bank tomorrow !2 #Work every week`
+  and the composer extracts the date, priority, list and repeat, leaving a clean title.
+  Unknown words stay in the title, so plain typing is never mangled.
+- **Command palette** — `Ctrl/⌘ K`: fuzzy search live tasks, jump to any view, complete a
+  task, toggle theme, export/import, open shortcuts.
+- **Backups** — Export writes `slate-backup-YYYY-MM-DD.json` (tasks, lists, streak);
+  Import validates the shape and offers Undo.
+
+## Tests
+
+```bash
+npm run dev            # terminal 1
+python tests/e2e.py    # terminal 2 — 24 checks, screenshots in shots/
+```
+
+Covers calendar landing, stats rendering, quick-add parsing, streak logging, recurring
+spawn + date maths, palette navigation, freeze repair, export payload, phone layout and
+console errors.
+
 ## Android app
 
 The same build ships as a native Android app through Capacitor.
