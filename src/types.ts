@@ -1,3 +1,5 @@
+import type { Recurrence } from "./lib/recurrence";
+
 export type Priority = 0 | 1 | 2;
 
 export interface Task {
@@ -10,6 +12,10 @@ export interface Task {
   listId: string;
   createdAt: number;
   completedAt: number | null;
+  /** repeating rule; completing spawns the next occurrence */
+  recurrence?: Recurrence;
+  /** id of the task this occurrence was created from */
+  spawnedFrom?: string;
 }
 
 export interface TaskList {
@@ -18,7 +24,7 @@ export interface TaskList {
   color: string;
 }
 
-export type SmartView = "calendar" | "today" | "upcoming" | "all" | "completed";
+export type SmartView = "calendar" | "today" | "upcoming" | "stats" | "all" | "completed";
 export type ViewId = SmartView | `list:${string}`;
 export type SortKey = "manual" | "due" | "priority" | "created";
 export type StatusFilter = "all" | "active" | "done";

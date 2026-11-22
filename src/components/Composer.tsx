@@ -3,6 +3,9 @@ import type { RefObject } from "react";
 import type { Priority, TaskList } from "../types";
 import { PRIORITY_META } from "../types";
 import { formatDue } from "../lib/date";
+import { parseQuickAdd } from "../lib/nlp";
+import { RECURRENCE_META } from "../lib/recurrence";
+import type { Recurrence } from "../lib/recurrence";
 import { Icon } from "./Icons";
 
 export interface DraftTask {
@@ -11,6 +14,7 @@ export interface DraftTask {
   priority: Priority;
   due: string | null;
   listId: string;
+  recurrence?: Recurrence;
 }
 
 const PRIORITY_STYLE: Record<Priority, string> = {
@@ -36,6 +40,7 @@ export function Composer({
   const [priority, setPriority] = useState<Priority>(0);
   const [due, setDue] = useState<string | null>(null);
   const [listId, setListId] = useState(defaultListId);
+  const [recurrence, setRecurrence] = useState<Recurrence>("none");
   const [lastDefault, setLastDefault] = useState(defaultListId);
 
   // follow the list you are currently looking at (adjust during render, no effect)
@@ -48,18 +53,22 @@ export function Composer({
 
   const submit = () => {
     if (!canSubmit) return;
+    // "call the bank tomorrow !2 #Work every week" → chips, without a dialog
+    const parsed = parseQuickAdd(title, lists);
     onAdd({
-      title: title.trim(),
+      title: parsed.title || title.trim(),
       notes: notes.trim() || undefined,
-      priority,
-      due,
-      listId,
+      priority: parsed.priority ?? priority,
+      due: parsed.due ?? due,
+      listId: parsed.listId ?? listId,
+      recurrence: parsed.recurrence ?? recurrence,
     });
     setTitle("");
     setNotes("");
     setNotesOpen(false);
     setPriority(0);
     setDue(null);
+    setRecurrence("none");
   };
 
   const chip =
@@ -161,6 +170,24 @@ export function Composer({
             <Icon name="x" className="h-3.5 w-3.5" />
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={() => {
+            const order: Recurrence[] = ["none", "daily", "weekly", "monthly"];
+            setRecurrence(order[(order.indexOf(recurrence) + 1) % order.length]);
+          }}
+          className={`${chip} ${
+            recurrence !== "none"
+              ? "border-accent/30 bg-accent/10 text-accent"
+              : "border-line text-muted hover:border-muted/40"
+          }`}
+          aria-label="Cycle repeat"
+          title="Repeat — click to cycle"
+        >
+          <Icon name="repeat" className="h-3.5 w-3.5" />
+          {recurrence === "none" ? "Repeat" : RECURRENCE_META[recurrence].short}
+        </button>
 
         <div className="relative">
           <select
