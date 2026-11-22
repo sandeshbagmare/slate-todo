@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="slate_bg">#07080C</color>
+    <color name="slate_surface">#0D0F15</color>
+    <color name="slate_accent">#8B7BFF</color>
+    <color name="slate_accent_dark">#5B4BFF</color>
+    <color name="colorPrimary">#8B7BFF</color>
+    <color name="colorPrimaryDark">#07080C</color>
+    <color name="colorAccent">#22D3EE</color>
+</resources>

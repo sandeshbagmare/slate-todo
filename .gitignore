@@ -1,0 +1,16 @@
+node_modules/
+dist/
+shots/
+*.local
+*.apk
+.DS_Store
+
+# Android build output + generated web bundle (produced by `cap sync`)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/local.properties
+android/capacitor.settings.gradle

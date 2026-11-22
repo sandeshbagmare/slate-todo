@@ -1,0 +1,31 @@
+export type Priority = 0 | 1 | 2;
+
+export interface Task {
+  id: string;
+  title: string;
+  notes?: string;
+  done: boolean;
+  priority: Priority;
+  due: string | null; // YYYY-MM-DD
+  listId: string;
+  createdAt: number;
+  completedAt: number | null;
+}
+
+export interface TaskList {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export type SmartView = "calendar" | "today" | "upcoming" | "all" | "completed";
+export type ViewId = SmartView | `list:${string}`;
+export type SortKey = "manual" | "due" | "priority" | "created";
+export type StatusFilter = "all" | "active" | "done";
+export type Theme = "dark" | "light";
+
+export const PRIORITY_META: Record<Priority, { label: string; short: string }> = {
+  0: { label: "Low", short: "Low" },
+  1: { label: "Medium", short: "Med" },
+  2: { label: "High", short: "High" },
+};

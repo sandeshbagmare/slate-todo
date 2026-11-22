@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+    <meta name="description" content="Slate — a fast, keyboard-first todo app with lists, due dates, priorities and a daily focus ring." />
+    <meta name="theme-color" content="#07080c" />
+    <title>Slate — tasks that stay out of your way</title>
+    <script>
+      // apply the saved theme before first paint (no flash)
+      try {
+        var raw = localStorage.getItem("slate.theme");
+        var theme = raw ? JSON.parse(raw) : "dark";
+        document.documentElement.classList.toggle("dark", theme !== "light");
+      } catch (err) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
