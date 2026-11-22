@@ -79,8 +79,12 @@ src/
   day's tasks, and add a task straight onto the selected date.
 - Right column: selected day, month summary (scheduled / done / late / busiest
   day) and a "Coming up" list for the next 10 days that jumps the grid to a day.
+- **Week board** toggle (Month / Week) with the seven days side by side, inline
+  checkboxes and two-line task chips; it takes the full width so names stay readable.
+- **Drag to reschedule**: drag any chip onto another day in month or week mode — the
+  task's due date moves, with a toast and Undo.
 - Phones swap the grid chips for dot markers and move navigation to the bottom
-  tab bar (Calendar · Today · Upcoming · Lists).
+  tab bar (Calendar · Today · Upcoming · Stats · Lists).
 
 ## Streaks and stats
 
