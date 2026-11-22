@@ -37,12 +37,14 @@ export function CalendarView({
   onToggle,
   onDelete,
   onAdd,
+  onMove,
 }: {
   tasks: Task[];
   lists: TaskList[];
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onAdd: (title: string, due: string, listId: string) => void;
+  onMove: (id: string, due: string) => void;
 }) {
   const today = todayKey();
   const [cursor, setCursor] = useState(() => {
@@ -50,6 +52,8 @@ export function CalendarView({
     return { year: d.getFullYear(), month: d.getMonth() };
   });
   const [selected, setSelected] = useState(today);
+  const [mode, setMode] = useState<"month" | "week">("month");
+  const [dragOver, setDragOver] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const draftRef = useRef<HTMLInputElement>(null);
 
@@ -103,10 +107,40 @@ export function CalendarView({
   const listOf = (id: string) => lists.find((l) => l.id === id);
   const defaultList = lists[0]?.id ?? "inbox";
 
+  const weekStart = useMemo(
+    () => addDays(selected, -((fromKey(selected).getDay() + 6) % 7)),
+    [selected],
+  );
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart],
+  );
+  const weekEnd = addDays(weekStart, 6);
+  const weekCount = weekDays.reduce((n, k) => n + (byDay.get(k)?.length ?? 0), 0);
+  const weekLabel = `${MONTHS[fromKey(weekStart).getMonth()].slice(0, 3)} ${fromKey(weekStart).getDate()} - ${MONTHS[fromKey(weekEnd).getMonth()].slice(0, 3)} ${fromKey(weekEnd).getDate()}`;
+
   const shift = (n: number) => {
+    if (mode === "week") {
+      setSelected(addDays(selected, 7 * n));
+      return;
+    }
     const d = new Date(cursor.year, cursor.month + n, 1);
     setCursor({ year: d.getFullYear(), month: d.getMonth() });
   };
+
+  const dropProps = (key: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(key);
+    },
+    onDragLeave: () => setDragOver((k) => (k === key ? null : k)),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData("text/plain");
+      if (id) onMove(id, key);
+      setDragOver(null);
+    },
+  });
 
   const goToday = () => {
     const d = fromKey(today);
@@ -145,10 +179,28 @@ export function CalendarView({
           </button>
           <div className="ml-2">
             <div className="text-[15px] font-semibold tracking-tight sm:text-[17px]">
-              {MONTHS[cursor.month]} {cursor.year}
+              {mode === "month" ? `${MONTHS[cursor.month]} ${cursor.year}` : weekLabel}
             </div>
-            <div className="text-[11.5px] text-muted">{monthCount} scheduled</div>
+            <div className="text-[11.5px] text-muted">
+              {mode === "month" ? `${monthCount} scheduled` : `${weekCount} this week`}
+            </div>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+        <div className="flex rounded-xl border border-line bg-surface/70 p-0.5" role="group" aria-label="Calendar mode">
+          {(["month", "week"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              aria-pressed={mode === m}
+              className={`rounded-lg px-2.5 py-1 text-[12px] font-medium capitalize transition ${
+                mode === m ? "bg-accent/15 text-accent" : "text-muted hover:text-ink"
+              }`}
+            >
+              {m}
+            </button>
+          ))}
         </div>
         <button
           type="button"
@@ -157,9 +209,89 @@ export function CalendarView({
         >
           Today
         </button>
+        </div>
       </div>
 
-      <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className={`mt-3 grid gap-4 ${mode === "month" ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""}`}>
+        {/* week board */}
+        {mode === "week" ? (
+          <div className="rounded-2xl border border-line bg-surface/60 p-2 backdrop-blur sm:p-3">
+            <div className="grid gap-1 sm:grid-cols-7">
+              {weekDays.map((key) => {
+                const dayTasks = byDay.get(key) ?? [];
+                const isToday = key === today;
+                const isSelected = key === selected;
+                return (
+                  <div
+                    key={key}
+                    {...dropProps(key)}
+                    className={[
+                      "flex flex-col gap-1.5 rounded-xl border p-1.5 transition-colors",
+                      dragOver === key
+                        ? "border-accent bg-accent/15"
+                        : isSelected
+                          ? "border-accent/50 bg-accent/8"
+                          : "border-line/60",
+                    ].join(" ")}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelected(key)}
+                      className="flex items-center justify-between gap-1 rounded-lg px-0.5 py-0.5 text-left"
+                      aria-label={`${label(key)}, ${dayTasks.length} tasks`}
+                    >
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted">
+                        {WEEKDAYS[(fromKey(key).getDay() + 6) % 7]}
+                      </span>
+                      <span
+                        className={`grid h-[20px] min-w-[20px] place-items-center rounded-full text-[11.5px] font-medium tabular-nums ${
+                          isToday ? "bg-accent text-white" : "text-muted"
+                        }`}
+                      >
+                        {Number(key.slice(-2))}
+                      </span>
+                    </button>
+
+                    <div className="flex min-h-[64px] flex-col gap-1 sm:min-h-[240px]">
+                      {dayTasks.map((t) => (
+                        <div
+                          key={t.id}
+                          data-task-id={t.id}
+                          draggable
+                          onDragStart={(e) => e.dataTransfer.setData("text/plain", t.id)}
+                          title="Drag to another day"
+                          className={[
+                            "group/chip flex cursor-grab items-start gap-1 rounded-md px-1 py-1 text-[11px] leading-snug active:cursor-grabbing",
+                            t.done ? "bg-surface2 text-muted line-through" : "bg-accent/10 text-ink/85",
+                          ].join(" ")}
+                        >
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={t.done}
+                            aria-label={t.done ? `Mark "${t.title}" as not done` : `Complete "${t.title}"`}
+                            onClick={() => onToggle(t.id)}
+                            className="mt-[1px] grid h-3 w-3 shrink-0 place-items-center rounded-[4px] border border-line/80 text-transparent hover:border-accent/70"
+                          >
+                            <Icon name="check" className="h-2 w-2" strokeWidth={3} />
+                          </button>
+                          <span className="line-clamp-2 min-w-0">{t.title}</span>
+                        </div>
+                      ))}
+                      {dayTasks.length === 0 && (
+                        <span className="px-1 text-[10.5px] text-muted/50">—</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 px-1 text-[10.5px] text-muted/70">
+              Drag a task onto another day to reschedule it.
+            </p>
+          </div>
+        ) : (
+        <>
         {/* month grid */}
         <div className="rounded-2xl border border-line bg-surface/60 p-2 backdrop-blur sm:p-3">
           <div className="grid grid-cols-7 gap-1 pb-1">
@@ -183,13 +315,16 @@ export function CalendarView({
                   key={key}
                   type="button"
                   onClick={() => setSelected(key)}
+                  {...dropProps(key)}
                   aria-pressed={isSelected}
                   aria-label={`${label(key)}, ${dayTasks.length} tasks`}
                   className={[
                     "group relative flex min-h-[60px] flex-col gap-1 rounded-xl border p-1.5 text-left transition-colors sm:h-[92px] sm:p-2",
-                    isSelected
-                      ? "border-accent/60 bg-accent/10"
-                      : "border-transparent hover:border-line hover:bg-surface2/60",
+                    dragOver === key
+                      ? "border-accent bg-accent/15"
+                      : isSelected
+                        ? "border-accent/60 bg-accent/10"
+                        : "border-transparent hover:border-line hover:bg-surface2/60",
                     inMonth ? "text-ink" : "text-muted/45",
                   ].join(" ")}
                 >
@@ -223,15 +358,19 @@ export function CalendarView({
                   {/* desktop: task chips */}
                   <div className="hidden flex-col gap-0.5 sm:flex">
                     {dayTasks.slice(0, 2).map((t) => (
-                      <span
+                      <div
                         key={t.id}
+                        data-task-id={t.id}
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData("text/plain", t.id)}
+                        title="Drag to another day"
                         className={[
                           "truncate rounded-md px-1 py-0.5 text-[10.5px] leading-tight",
                           t.done ? "bg-surface2 text-muted line-through" : "bg-accent/10 text-ink/85",
                         ].join(" ")}
                       >
                         {t.title}
-                      </span>
+                      </div>
                     ))}
                     {dayTasks.length > 2 && (
                       <span className="px-1 text-[10px] text-muted">+{dayTasks.length - 2} more</span>
@@ -247,7 +386,10 @@ export function CalendarView({
           </div>
         </div>
 
+        </>
+        )}
         {/* selected day */}
+        {mode === "month" && (
         <div className="flex flex-col gap-3">
         <div className="flex flex-col rounded-2xl border border-line bg-surface/80 p-3 backdrop-blur sm:p-4">
           <div className="flex items-start justify-between gap-2">
@@ -430,6 +572,7 @@ export function CalendarView({
           )}
         </div>
         </div>
+        )}
       </div>
     </div>
   );

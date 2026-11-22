@@ -234,6 +234,17 @@ export default function App() {
   const setDue = (id: string, due: string | null) =>
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due } : t)));
 
+  const moveTask = (id: string, due: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task || task.due === due) return;
+    const previous = task.due;
+    setDue(id, due);
+    pushToast(`Moved to ${formatShort(due)}`, {
+      label: "Undo",
+      run: () => setDue(id, previous),
+    });
+  };
+
   const deleteTask = (id: string) => {
     const snapshot = tasks;
     const victim = tasks.find((t) => t.id === id);
@@ -548,6 +559,7 @@ export default function App() {
               onToggle={toggleTask}
               onDelete={deleteTask}
               onAdd={(title, due, listId) => addTask({ title, notes: undefined, priority: 0, due, listId })}
+              onMove={moveTask}
             />
           ) : (
           <>

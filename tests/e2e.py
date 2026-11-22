@@ -138,7 +138,49 @@ def main() -> int:
         check("no horizontal overflow", m.evaluate("document.documentElement.scrollWidth === innerWidth"))
         m.screenshot(path=str(SHOTS / "stats-mobile.png"))
 
-        # 9. no console errors anywhere
+        # 9. week mode + drag to reschedule
+        page.evaluate("localStorage.setItem('slate.view', JSON.stringify('calendar'))")
+        page.reload(wait_until="networkidle")
+        page.wait_for_timeout(600)
+        page.get_by_role("button", name="week", exact=True).click()
+        page.wait_for_timeout(450)
+        check("week board has 7 day columns",
+              page.locator("button[aria-label$='tasks']").count() == 7,
+              str(page.locator("button[aria-label$='tasks']").count()))
+
+        before = page.evaluate("JSON.parse(localStorage.getItem('slate.tasks'))")
+        moved_js = page.evaluate(
+            """() => {
+              const chips = [...document.querySelectorAll('[draggable="true"]')];
+              const chip = chips.find((el) => el.textContent.trim().length > 0);
+              if (!chip) return 'no chip';
+              window.__dragId = chip.dataset.taskId;
+              const cols = [...document.querySelectorAll('button[aria-label$="tasks"]')].map((el) => el.parentElement);
+              const dt = new DataTransfer();
+              chip.dispatchEvent(new DragEvent('dragstart', { dataTransfer: dt, bubbles: true }));
+              cols[6].dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+              cols[6].dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+              chip.dispatchEvent(new DragEvent('dragend', { dataTransfer: dt, bubbles: true }));
+              return chip.dataset.taskId;
+            }"""
+        )
+        page.wait_for_timeout(500)
+        after = page.evaluate("JSON.parse(localStorage.getItem('slate.tasks'))")
+        moved = next((t for t in before if moved_js and t["id"] == moved_js), None)
+        target = next((t for t in after if moved_js and t["id"] == moved_js), None)
+        check("drag moved the task to another day",
+              moved_js not in ("ok", "no chip") and target is not None and moved is not None
+              and target["due"] != moved["due"],
+              f"{moved['due'] if moved else '?'} -> {target['due'] if target else '?'}")
+        check("move toast offers undo", page.locator("[role=status]").count() > 0)
+        page.screenshot(path=str(SHOTS / "week-board.png"))
+
+        # 10. switching back to month keeps the month grid
+        page.get_by_role("button", name="month", exact=True).click()
+        page.wait_for_timeout(350)
+        check("month mode restored", page.locator("button[aria-label$='tasks']").count() == 42)
+
+        # 11. no console errors anywhere
         check("no console errors", len(errors) == 0, "; ".join(errors[:3]))
         browser.close()
 
