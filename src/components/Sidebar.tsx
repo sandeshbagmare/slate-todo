@@ -38,6 +38,7 @@ const NAV: { id: ViewId; label: string; icon: IconName; count?: keyof Counts }[]
   { id: "myday", label: "My Day", icon: "star", count: "myday" },
   { id: "upcoming", label: "Upcoming", icon: "clock", count: "upcoming" },
   { id: "stats", label: "Stats & streaks", icon: "chart" },
+  { id: "review", label: "Weekly review", icon: "sparkle" },
   { id: "all", label: "All tasks", icon: "layers", count: "all" },
   { id: "completed", label: "Completed", icon: "checkCircle", count: "completed" },
 ];

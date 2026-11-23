@@ -18,6 +18,7 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { CalendarView } from "./components/CalendarView";
 import { MobileTabs } from "./components/MobileTabs";
 import { StatsView } from "./components/StatsView";
+import { ReviewView } from "./components/ReviewView";
 import { FocusTimer } from "./components/FocusTimer";
 import { CommandPalette } from "./components/CommandPalette";
 import { emptyStreak, recordCompletion, repairStreak, summarize } from "./lib/streak";
@@ -87,6 +88,7 @@ export default function App() {
       out = tasks.filter((t) => t.myDay && t.myDay <= today && (t.myDay === today || !t.done));
     else if (view === "upcoming") out = tasks.filter((t) => t.due !== null && t.due > today);
     else if (view === "completed") out = tasks.filter((t) => t.done);
+    else if (view === "review" || view === "stats") out = tasks;
     else if (view !== "all") out = tasks.filter((t) => t.listId === view.slice(5));
     return out;
   }, [tasks, view]);
@@ -129,6 +131,7 @@ export default function App() {
   const activeList = lists.find((l) => `list:${l.id}` === view);
   const isCalendar = view === "calendar";
   const isStats = view === "stats";
+  const isReview = view === "review";
   const streakSummary = summarize(streak);
   const scheduled = tasks.filter((t) => t.due !== null).length;
   const title =
@@ -137,6 +140,7 @@ export default function App() {
     : view === "myday" ? "My Day"
     : view === "upcoming" ? "Upcoming"
     : view === "stats" ? "Stats & streaks"
+    : view === "review" ? "Weekly review"
     : view === "all" ? "All tasks"
     : view === "completed" ? "Completed"
     : activeList?.name ?? "Tasks";
@@ -333,6 +337,15 @@ export default function App() {
     pushToast(on ? `“${task.title}” added to My Day` : `“${task.title}” removed from My Day`);
   };
 
+  const openTask = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    setView("all");
+    setQuery(task.title);
+    setStatus("all");
+    pushToast(`Showing “${task.title}”`);
+  };
+
   const deleteTask = (id: string) => {
     const snapshot = tasks;
     const victim = tasks.find((t) => t.id === id);
@@ -524,7 +537,7 @@ export default function App() {
   const openRowForList = (id: string) => lists.find((l) => l.id === id);
   const showListBadge = view === "today" || view === "myday" || view === "upcoming" || view === "all" || view === "completed";
   const showFilters = view === "all" || view.startsWith("list:");
-  const hideTaskChrome = isCalendar || isStats;
+  const hideTaskChrome = isCalendar || isStats || isReview;
 
   return (
     <div className="relative min-h-screen text-ink">
@@ -603,9 +616,11 @@ export default function App() {
               </div>
               <h1 className="mt-1 flex items-center gap-2.5 text-[26px] font-semibold tracking-[-0.03em] sm:text-[30px]">
                 {title}
-                <span className="rounded-lg border border-line px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted">
-                  {isStats ? streakSummary.activeDays : visible.length}
-                </span>
+                {!isReview && (
+                  <span className="rounded-lg border border-line px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted">
+                    {isStats ? streakSummary.activeDays : visible.length}
+                  </span>
+                )}
               </h1>
             </div>
 
@@ -641,6 +656,17 @@ export default function App() {
                 pushToast("Freeze used — yesterday is patched");
               }}
               onSetGoal={(goal) => setStreak((s) => ({ ...s, goal }))}
+            />
+          ) : isReview ? (
+            <ReviewView
+              tasks={tasks}
+              streak={streak}
+              onSetDue={(id, due) => {
+                setDue(id, due);
+                pushToast(due ? `Rescheduled for ${formatDue(due)}` : "Due date cleared");
+              }}
+              onToggleMyDay={toggleMyDay}
+              onOpenTask={openTask}
             />
           ) : isCalendar ? (
             <CalendarView
