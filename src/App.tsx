@@ -83,6 +83,8 @@ export default function App() {
     const today = todayKey();
     let out = tasks;
     if (view === "today") out = tasks.filter((t) => t.due !== null && t.due <= today);
+    else if (view === "myday")
+      out = tasks.filter((t) => t.myDay && t.myDay <= today && (t.myDay === today || !t.done));
     else if (view === "upcoming") out = tasks.filter((t) => t.due !== null && t.due > today);
     else if (view === "completed") out = tasks.filter((t) => t.done);
     else if (view !== "all") out = tasks.filter((t) => t.listId === view.slice(5));
@@ -107,6 +109,7 @@ export default function App() {
     for (const l of lists) byList[l.id] = open.filter((t) => t.listId === l.id).length;
     return {
       today: open.filter((t) => t.due !== null && t.due <= today).length,
+      myday: open.filter((t) => t.myDay && t.myDay <= today).length,
       upcoming: open.filter((t) => t.due !== null && t.due > today).length,
       all: open.length,
       completed: tasks.filter((t) => t.done).length,
@@ -131,6 +134,7 @@ export default function App() {
   const title =
     view === "calendar" ? "Calendar"
     : view === "today" ? "Today"
+    : view === "myday" ? "My Day"
     : view === "upcoming" ? "Upcoming"
     : view === "stats" ? "Stats & streaks"
     : view === "all" ? "All tasks"
@@ -172,6 +176,7 @@ export default function App() {
       createdAt: Date.now(),
       completedAt: null,
       recurrence: draft.recurrence ?? "none",
+      myDay: view === "myday" ? todayKey() : null,
     };
     setTasks((prev) => [task, ...prev]);
 
@@ -181,7 +186,9 @@ export default function App() {
         ? true
         : view === "today"
           ? task.due !== null && task.due <= today
-          : view === "upcoming"
+          : view === "myday"
+            ? Boolean(task.myDay)
+            : view === "upcoming"
             ? task.due !== null && task.due > today
             : view === "completed"
               ? false
@@ -315,6 +322,15 @@ export default function App() {
     };
     setTasks((prev) => [copy, ...prev]);
     pushToast(`Duplicated “${source.title}”`);
+  };
+
+  const toggleMyDay = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    const on = !task.myDay || task.myDay > todayKey();
+    const value = on ? todayKey() : null;
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, myDay: value } : t)));
+    pushToast(on ? `“${task.title}” added to My Day` : `“${task.title}” removed from My Day`);
   };
 
   const deleteTask = (id: string) => {
@@ -499,12 +515,14 @@ export default function App() {
       ? { title: "Nothing completed yet", body: "Tick something off and it will land here, with the time it was finished." }
       : view === "today"
         ? { title: "Today is clear", body: "No tasks due today. Add one below, or pull something forward from Upcoming." }
+        : view === "myday"
+          ? { title: "My Day is empty", body: "Star tasks with the ☆ on any row and they land here, whatever their due date." }
         : view === "upcoming"
           ? { title: "Nothing scheduled", body: "Give a task a due date and it will show up here automatically." }
           : { title: "No tasks here yet", body: "Add your first task — press N anywhere to jump to the composer." };
 
   const openRowForList = (id: string) => lists.find((l) => l.id === id);
-  const showListBadge = view === "today" || view === "upcoming" || view === "all" || view === "completed";
+  const showListBadge = view === "today" || view === "myday" || view === "upcoming" || view === "all" || view === "completed";
   const showFilters = view === "all" || view.startsWith("list:");
   const hideTaskChrome = isCalendar || isStats;
 
@@ -677,6 +695,7 @@ export default function App() {
                   onCyclePriority={cyclePriority}
                   onSetDue={setDue}
                   onSetReminder={setReminder}
+                  onToggleMyDay={toggleMyDay}
                   onAddStep={addStep}
                   onToggleStep={toggleStep}
                   onDeleteStep={deleteStep}

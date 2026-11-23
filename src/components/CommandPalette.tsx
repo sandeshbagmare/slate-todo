@@ -51,6 +51,7 @@ export function CommandPalette({
       { id: "cmd-new", label: "New task", hint: "N", icon: "plus", run: onNewTask },
       { id: "cmd-cal", label: "Go to Calendar", icon: "calendar", run: () => onGo("calendar") },
       { id: "cmd-today", label: "Go to Today", icon: "target", run: () => onGo("today") },
+      { id: "cmd-myday", label: "Go to My Day", icon: "star", run: () => onGo("myday") },
       { id: "cmd-up", label: "Go to Upcoming", icon: "clock", run: () => onGo("upcoming") },
       { id: "cmd-stats", label: "Go to Stats & streaks", icon: "chart", run: () => onGo("stats") },
       { id: "cmd-all", label: "Go to All tasks", icon: "layers", run: () => onGo("all") },

@@ -6,6 +6,7 @@ import { INBOX } from "../lib/seed";
 
 export interface Counts {
   today: number;
+  myday: number;
   upcoming: number;
   all: number;
   completed: number;
@@ -34,6 +35,7 @@ interface SidebarProps {
 const NAV: { id: ViewId; label: string; icon: IconName; count?: keyof Counts }[] = [
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "today", label: "Today", icon: "target", count: "today" },
+  { id: "myday", label: "My Day", icon: "star", count: "myday" },
   { id: "upcoming", label: "Upcoming", icon: "clock", count: "upcoming" },
   { id: "stats", label: "Stats & streaks", icon: "chart" },
   { id: "all", label: "All tasks", icon: "layers", count: "all" },
