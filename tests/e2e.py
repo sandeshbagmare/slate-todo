@@ -217,7 +217,30 @@ def main() -> int:
         check("duplicate adds a copy", count_after == count_before + 1, f"{count_before} -> {count_after}")
         page.screenshot(path=str(SHOTS / "v12-tasks.png"))
 
-        # 12. no console errors anywhere
+        # 12. reminders
+        page.locator("aside").get_by_role("button", name="Today").click()
+        page.wait_for_timeout(350)
+        first = page.locator("ul[aria-label=Tasks] li").first
+        reminder = first.get_by_label("Set reminder time")
+        reminder.fill("18:45", force=True)
+        reminder.dispatch_event("change")
+        page.wait_for_timeout(800)
+        check("reminder chip shows the time", "6:45" in first.locator("label[title=Reminder]").inner_text())
+        toast_text = page.locator("[role=status]").first.inner_text()
+        check("reminder toast confirms", "Reminder saved for" in toast_text, toast_text.strip())
+        stamped = page.evaluate(
+            "JSON.parse(localStorage.getItem('slate.tasks')).filter(t => t.remindAt).map(t => t.remindAt)")
+        check("reminder timestamp is in the future",
+              bool(stamped) and stamped[0] > 0)
+        page.reload(wait_until="networkidle")
+        page.wait_for_timeout(600)
+        page.locator("aside").get_by_role("button", name="Today").click()
+        page.wait_for_timeout(300)
+        kept = page.locator("ul[aria-label=Tasks] li").first.locator("label[title=Reminder]").inner_text()
+        check("reminder survives a reload", "6:45" in kept, kept.strip())
+        page.screenshot(path=str(SHOTS / "v13-reminder.png"))
+
+        # 13. no console errors anywhere
         check("no console errors", len(errors) == 0, "; ".join(errors[:3]))
         browser.close()
 

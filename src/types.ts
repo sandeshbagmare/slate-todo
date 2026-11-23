@@ -24,6 +24,8 @@ export interface Task {
   spawnedFrom?: string;
   /** checklist inside the task */
   steps?: Step[];
+  /** epoch ms when the reminder should fire */
+  remindAt?: number | null;
 }
 
 export interface TaskList {

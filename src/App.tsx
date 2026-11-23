@@ -24,6 +24,7 @@ import { emptyStreak, recordCompletion, repairStreak, summarize } from "./lib/st
 import type { StreakState } from "./lib/streak";
 import { nextDue, RECURRENCE_META } from "./lib/recurrence";
 import { formatDue, longToday, todayKey } from "./lib/date";
+import { requestReminderPermission, startWebReminderLoop, syncReminders } from "./lib/reminders";
 
 const LIST_COLORS = ["#8b7bff", "#22d3ee", "#34d399", "#ff8a4c", "#f472b6", "#facc15"];
 
@@ -64,6 +65,7 @@ export default function App() {
   const searchRef = useRef<HTMLInputElement>(null);
   const undoRef = useRef<(() => void) | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const tasksRef = useRef<Task[]>([]);
 
   /* ---------- persistence ---------- */
   useEffect(() => save("slate.tasks", tasks), [tasks]);
@@ -142,6 +144,21 @@ export default function App() {
     undoRef.current = action?.run ?? null;
     setToast({ id: Date.now(), message, actionLabel: action?.label, onAction: action?.run });
   }, []);
+
+  /* keep the OS reminder schedule in step with the task list */
+  useEffect(() => {
+    tasksRef.current = tasks;
+    const handle = window.setTimeout(() => {
+      void syncReminders(tasks);
+    }, 900);
+    return () => window.clearTimeout(handle);
+  }, [tasks]);
+
+  /* browser fallback while the tab is open */
+  useEffect(
+    () => startWebReminderLoop(() => tasksRef.current, (title) => pushToast(`Reminder: ${title}`)),
+    [pushToast],
+  );
 
   const addTask = (draft: DraftTask) => {
     const task: Task = {
@@ -234,6 +251,17 @@ export default function App() {
 
   const setDue = (id: string, due: string | null) =>
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, due } : t)));
+
+  const setReminder = async (id: string, at: number | null) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, remindAt: at } : t)));
+    if (at === null) {
+      pushToast("Reminder removed");
+      return;
+    }
+    const allowed = await requestReminderPermission().catch(() => false);
+    const when = new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    pushToast(allowed ? `Reminder set for ${when}` : `Reminder saved for ${when} — notifications are off`);
+  };
 
   const moveTask = (id: string, due: string) => {
     const task = tasks.find((t) => t.id === id);
@@ -648,6 +676,7 @@ export default function App() {
                   onDelete={deleteTask}
                   onCyclePriority={cyclePriority}
                   onSetDue={setDue}
+                  onSetReminder={setReminder}
                   onAddStep={addStep}
                   onToggleStep={toggleStep}
                   onDeleteStep={deleteStep}
