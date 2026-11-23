@@ -108,6 +108,11 @@ src/
   Unknown words stay in the title, so plain typing is never mangled.
 - **Command palette** — `Ctrl/⌘ K`: fuzzy search live tasks, jump to any view, complete a
   task, toggle theme, export/import, open shortcuts.
+- **Checklists** — add steps inside any task; the row shows `done/total`, steps can be
+  ticked, removed, and are copied when you duplicate a task.
+- **Focus timer** — 25/5 pomodoro in the right rail; pick a task and finishing the
+  session completes it, otherwise it just logs the session.
+- **Duplicate** — one click copies a task (title, notes, priority, due, list, repeat, steps).
 - **Backups** — Export writes `slate-backup-YYYY-MM-DD.json` (tasks, lists, streak);
   Import validates the shape and offers Undo.
 
@@ -115,12 +120,12 @@ src/
 
 ```bash
 npm run dev            # terminal 1
-python tests/e2e.py    # terminal 2 — 24 checks, screenshots in shots/
+python tests/e2e.py    # terminal 2 — 34 checks, screenshots in shots/
 ```
 
 Covers calendar landing, stats rendering, quick-add parsing, streak logging, recurring
-spawn + date maths, palette navigation, freeze repair, export payload, phone layout and
-console errors.
+spawn + date maths, palette navigation, freeze repair, export payload, phone layout,
+week board + drag reschedule, checklists, focus timer, duplicate and console errors.
 
 ## Android app
 

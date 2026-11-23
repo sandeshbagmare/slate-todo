@@ -83,7 +83,7 @@ export function FocusPanel({ tasks }: { tasks: Task[] }) {
           : `${dueToday.length - doneToday} left today. Start with the highest-priority one.`;
 
   return (
-    <aside className="hidden w-[292px] shrink-0 flex-col gap-4 xl:flex" aria-label="Focus panel">
+    <aside className="flex flex-col gap-4" aria-label="Focus panel">
       <div className="sticky top-6 flex flex-col gap-4">
         {/* progress ring */}
         <div className="rounded-2xl border border-line bg-surface/80 p-5 backdrop-blur">

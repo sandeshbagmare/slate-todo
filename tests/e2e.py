@@ -180,7 +180,44 @@ def main() -> int:
         page.wait_for_timeout(350)
         check("month mode restored", page.locator("button[aria-label$='tasks']").count() == 42)
 
-        # 11. no console errors anywhere
+        # 11. checklists, focus timer, duplicate
+        page.locator("aside").get_by_role("button", name="Today").click()
+        page.wait_for_timeout(350)
+        first = page.locator("ul[aria-label=Tasks] li").first
+        first.locator("button[aria-label^='Checklist']").click()
+        page.wait_for_timeout(200)
+        step_input = first.get_by_label("Add checklist step")
+        for text in ("Confirm the venue", "Send the invites"):
+            step_input.fill(text)
+            page.keyboard.press("Enter")
+        page.wait_for_timeout(300)
+        first.locator("button[aria-label^='Finish step']").first.click()
+        page.wait_for_timeout(250)
+        chip = first.locator("button[aria-label^='Checklist']").get_attribute("aria-label")
+        check("checklist records progress", chip == "Checklist, 1 of 2 done", chip or "")
+        stored = page.evaluate("JSON.parse(localStorage.getItem('slate.tasks'))")
+        with_steps = [t for t in stored if t.get("steps")]
+        check("steps persist on the task",
+              bool(with_steps) and len(with_steps[0]["steps"]) == 2)
+
+        timer_card = page.locator("section").filter(has_text="Focus").first
+        page.get_by_role("button", name="Start").click()
+        page.wait_for_timeout(1200)
+        check("timer starts and counts down", page.get_by_role("button", name="Pause").count() == 1)
+        shown = timer_card.locator("span.tabular-nums").first.inner_text()
+        check("timer shows a running clock", shown != "25:00", shown)
+        page.get_by_role("button", name="Reset timer").click()
+        page.wait_for_timeout(200)
+        check("timer resets", timer_card.locator("span.tabular-nums").first.inner_text() == "25:00")
+
+        count_before = page.evaluate("JSON.parse(localStorage.getItem('slate.tasks')).length")
+        page.locator("ul[aria-label=Tasks] li").first.locator("button[aria-label^=Duplicate]").click()
+        page.wait_for_timeout(400)
+        count_after = page.evaluate("JSON.parse(localStorage.getItem('slate.tasks')).length")
+        check("duplicate adds a copy", count_after == count_before + 1, f"{count_before} -> {count_after}")
+        page.screenshot(path=str(SHOTS / "v12-tasks.png"))
+
+        # 12. no console errors anywhere
         check("no console errors", len(errors) == 0, "; ".join(errors[:3]))
         browser.close()
 
