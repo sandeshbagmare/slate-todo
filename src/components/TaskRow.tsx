@@ -2,8 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import type { Task, TaskList } from "../types";
 import { PRIORITY_META } from "../types";
 import { RECURRENCE_META } from "../lib/recurrence";
-import { dueTone, formatDue } from "../lib/date";
+import { dueTone, formatDue, fromKey, todayKey } from "../lib/date";
 import { Icon } from "./Icons";
+
+const hhmm = (ms: number): string => {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
 
 interface TaskRowProps {
   task: Task;
@@ -18,6 +23,7 @@ interface TaskRowProps {
   onDelete: (id: string) => void;
   onCyclePriority: (id: string) => void;
   onSetDue: (id: string, due: string | null) => void;
+  onSetReminder: (id: string, at: number | null) => void;
   onAddStep: (id: string, title: string) => void;
   onToggleStep: (id: string, stepId: string) => void;
   onDeleteStep: (id: string, stepId: string) => void;
@@ -48,6 +54,7 @@ export function TaskRow({
   onDelete,
   onCyclePriority,
   onSetDue,
+  onSetReminder,
   onAddStep,
   onToggleStep,
   onDeleteStep,
@@ -232,6 +239,41 @@ export function TaskRow({
               />
             </label>
           )}
+
+          {/* reminder */}
+          <label
+            className={[
+              "inline-flex cursor-pointer items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11.5px] transition-colors",
+              task.remindAt
+                ? "border-accent/25 bg-accent/10 text-accent"
+                : "border-transparent text-transparent group-hover:text-muted hover:border-line",
+            ].join(" ")}
+            title="Reminder"
+          >
+            <Icon name="bell" className="h-3 w-3" />
+            {task.remindAt
+              ? new Date(task.remindAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+              : "Remind"}
+            <input
+              type="time"
+              value={task.remindAt ? hhmm(task.remindAt) : ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) {
+                  onSetReminder(task.id, null);
+                  return;
+                }
+                const [h, m] = v.split(":").map(Number);
+                const base = fromKey(task.due ?? todayKey());
+                base.setHours(h, m, 0, 0);
+                let at = base.getTime();
+                if (at < Date.now()) at += 86_400_000;
+                onSetReminder(task.id, at);
+              }}
+              className="absolute h-0 w-0 opacity-0"
+              aria-label="Set reminder time"
+            />
+          </label>
 
           {/* priority */}
           <button

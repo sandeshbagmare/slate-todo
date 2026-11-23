@@ -108,6 +108,9 @@ src/
   Unknown words stay in the title, so plain typing is never mangled.
 - **Command palette** — `Ctrl/⌘ K`: fuzzy search live tasks, jump to any view, complete a
   task, toggle theme, export/import, open shortcuts.
+- **Reminders** — set a time on any task; Android gets a real OS notification
+  (exact alarm + boot restore), the browser falls back to a notification while the
+  tab is open. Permission is requested the first time you set one.
 - **Checklists** — add steps inside any task; the row shows `done/total`, steps can be
   ticked, removed, and are copied when you duplicate a task.
 - **Focus timer** — 25/5 pomodoro in the right rail; pick a task and finishing the
@@ -120,7 +123,7 @@ src/
 
 ```bash
 npm run dev            # terminal 1
-python tests/e2e.py    # terminal 2 — 34 checks, screenshots in shots/
+python tests/e2e.py    # terminal 2 — 38 checks, screenshots in shots/
 ```
 
 Covers calendar landing, stats rendering, quick-add parsing, streak logging, recurring
