@@ -108,6 +108,8 @@ src/
   Unknown words stay in the title, so plain typing is never mangled.
 - **Command palette** — `Ctrl/⌘ K`: fuzzy search live tasks, jump to any view, complete a
   task, toggle theme, export/import, open shortcuts.
+- **Weekly review** — completion tiles, a seven-day bar chart with counts, an overdue
+  triage list (move to Today / Tomorrow / star it) and everything still due this week.
 - **My Day** — star any task (the ☆ on the row) and it joins today's short list
   whatever its due date; open items carry over until they are done, and the
   view has its own sidebar badge, phone tab and palette command.
@@ -126,7 +128,7 @@ src/
 
 ```bash
 npm run dev            # terminal 1
-python tests/e2e.py    # terminal 2 — 42 checks, screenshots in shots/
+python tests/e2e.py    # terminal 2 — 51 checks, screenshots in shots/
 ```
 
 Covers calendar landing, stats rendering, quick-add parsing, streak logging, recurring

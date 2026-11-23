@@ -36,7 +36,7 @@ export interface TaskList {
   color: string;
 }
 
-export type SmartView = "calendar" | "today" | "myday" | "upcoming" | "stats" | "all" | "completed";
+export type SmartView = "calendar" | "today" | "myday" | "upcoming" | "stats" | "review" | "all" | "completed";
 export type ViewId = SmartView | `list:${string}`;
 export type SortKey = "manual" | "due" | "priority" | "created";
 export type StatusFilter = "all" | "active" | "done";

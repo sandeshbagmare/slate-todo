@@ -255,7 +255,27 @@ def main() -> int:
         check("My Day heading", page.locator("h1").first.inner_text().strip().startswith("My Day"))
         page.screenshot(path=str(SHOTS / "v14-myday.png"))
 
-        # 14. no console errors anywhere
+        # 14. weekly review
+        page.locator("aside").get_by_role("button", name="Weekly review").click()
+        page.wait_for_timeout(450)
+        check("review heading", page.locator("h1").first.inner_text().strip().startswith("Weekly review"))
+        body = page.locator("main").inner_text()
+        for tile in ("Completed this week", "Still open", "Overdue", "Streak"):
+            check(f"review tile: {tile}", tile in body)
+        check("review week has seven days",
+              all(day in body for day in ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")))
+        triage = page.locator("section").filter(has_text="Overdue triage").first
+        check("triage has actions", triage.get_by_role("button", name="Tomorrow", exact=True).count() >= 1)
+        triage.get_by_role("button", name="Today", exact=True).first.click()
+        page.wait_for_timeout(500)
+        rescheduled = page.evaluate(
+            "JSON.parse(localStorage.getItem('slate.tasks')).filter(t => !t.done && t.due === '%s').length"
+            % page.evaluate("""(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()"""))
+        check("triage reschedules to today", rescheduled >= 2, str(rescheduled))
+        check("review lists the rest of the week", "Rest of the week" in page.locator("main").inner_text())
+        page.screenshot(path=str(SHOTS / "v15-review.png"))
+
+        # 15. no console errors anywhere
         check("no console errors", len(errors) == 0, "; ".join(errors[:3]))
         browser.close()
 
