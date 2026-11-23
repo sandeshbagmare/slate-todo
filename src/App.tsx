@@ -18,6 +18,7 @@ import { StatusBar, Style } from "@capacitor/status-bar";
 import { CalendarView } from "./components/CalendarView";
 import { MobileTabs } from "./components/MobileTabs";
 import { StatsView } from "./components/StatsView";
+import { FocusTimer } from "./components/FocusTimer";
 import { CommandPalette } from "./components/CommandPalette";
 import { emptyStreak, recordCompletion, repairStreak, summarize } from "./lib/streak";
 import type { StreakState } from "./lib/streak";
@@ -243,6 +244,49 @@ export default function App() {
       label: "Undo",
       run: () => setDue(id, previous),
     });
+  };
+
+  /* ---------- checklist + duplicate ---------- */
+  const addStep = (id: string, title: string) =>
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, steps: [...(t.steps ?? []), { id: uid(), title, done: false }] } : t,
+      ),
+    );
+
+  const toggleStep = (id: string, stepId: string) =>
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? {
+              ...t,
+              steps: (t.steps ?? []).map((s) => (s.id === stepId ? { ...s, done: !s.done } : s)),
+            }
+          : t,
+      ),
+    );
+
+  const deleteStep = (id: string, stepId: string) =>
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, steps: (t.steps ?? []).filter((s) => s.id !== stepId) } : t,
+      ),
+    );
+
+  const duplicateTask = (id: string) => {
+    const source = tasks.find((t) => t.id === id);
+    if (!source) return;
+    const copy: Task = {
+      ...source,
+      id: uid(),
+      done: false,
+      completedAt: null,
+      createdAt: Date.now(),
+      spawnedFrom: undefined,
+      steps: source.steps?.map((s) => ({ ...s, id: uid(), done: false })),
+    };
+    setTasks((prev) => [copy, ...prev]);
+    pushToast(`Duplicated “${source.title}”`);
   };
 
   const deleteTask = (id: string) => {
@@ -604,6 +648,10 @@ export default function App() {
                   onDelete={deleteTask}
                   onCyclePriority={cyclePriority}
                   onSetDue={setDue}
+                  onAddStep={addStep}
+                  onToggleStep={toggleStep}
+                  onDeleteStep={deleteStep}
+                  onDuplicate={duplicateTask}
                   onDragStart={setDraggingId}
                   onDragOver={(id) => setDropId((prev) => (prev === id ? prev : id))}
                   onDrop={drop}
@@ -660,7 +708,12 @@ export default function App() {
           )}
         </main>
 
-        {!hideTaskChrome && <FocusPanel tasks={tasks} />}
+        {!hideTaskChrome && (
+          <div className="hidden w-[292px] shrink-0 flex-col gap-4 pt-4 sm:pt-6 xl:flex">
+            <FocusTimer tasks={tasks} onComplete={toggleTask} onToast={pushToast} />
+            <FocusPanel tasks={tasks} />
+          </div>
+        )}
       </div>
 
       <MobileTabs

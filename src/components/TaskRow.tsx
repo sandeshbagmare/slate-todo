@@ -18,6 +18,10 @@ interface TaskRowProps {
   onDelete: (id: string) => void;
   onCyclePriority: (id: string) => void;
   onSetDue: (id: string, due: string | null) => void;
+  onAddStep: (id: string, title: string) => void;
+  onToggleStep: (id: string, stepId: string) => void;
+  onDeleteStep: (id: string, stepId: string) => void;
+  onDuplicate: (id: string) => void;
   onDragStart: (id: string) => void;
   onDragOver: (id: string) => void;
   onDrop: (id: string) => void;
@@ -44,6 +48,10 @@ export function TaskRow({
   onDelete,
   onCyclePriority,
   onSetDue,
+  onAddStep,
+  onToggleStep,
+  onDeleteStep,
+  onDuplicate,
   onDragStart,
   onDragOver,
   onDrop,
@@ -72,6 +80,17 @@ export function TaskRow({
   };
 
   const tone = task.due ? dueTone(task.due, task.done) : null;
+  const steps = task.steps ?? [];
+  const doneSteps = steps.filter((s) => s.done).length;
+  const [stepsOpen, setStepsOpen] = useState(false);
+  const [stepDraft, setStepDraft] = useState("");
+
+  const submitStep = () => {
+    const title = stepDraft.trim();
+    if (!title) return;
+    onAddStep(task.id, title);
+    setStepDraft("");
+  };
 
   return (
     <li
@@ -166,6 +185,23 @@ export function TaskRow({
         )}
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {/* steps */}
+          <button
+            type="button"
+            onClick={() => setStepsOpen((v) => !v)}
+            aria-expanded={stepsOpen}
+            aria-label={`Checklist, ${doneSteps} of ${steps.length} done`}
+            className={[
+              "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11.5px] transition-colors",
+              steps.length
+                ? "border-line text-muted hover:border-accent/40 hover:text-accent"
+                : "border-transparent text-transparent group-hover:text-muted hover:border-line",
+            ].join(" ")}
+          >
+            <Icon name="checkCircle" className="h-3 w-3" />
+            {steps.length ? `${doneSteps}/${steps.length}` : "Steps"}
+          </button>
+
           {/* due */}
           {task.due ? (
             <label
@@ -241,17 +277,83 @@ export function TaskRow({
             </span>
           )}
         </div>
+
+        {/* checklist */}
+        {stepsOpen && (
+          <div className="mt-2.5 rounded-xl border border-line/80 bg-surface2/40 p-2">
+            {steps.length > 0 && (
+              <ul className="flex flex-col gap-0.5">
+                {steps.map((s) => (
+                  <li key={s.id} className="group/step flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-surface2/70">
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={s.done}
+                      aria-label={s.done ? `Reopen step "${s.title}"` : `Finish step "${s.title}"`}
+                      onClick={() => onToggleStep(task.id, s.id)}
+                      className={[
+                        "grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border transition-colors",
+                        s.done
+                          ? "border-accent bg-accent text-white"
+                          : "border-line text-transparent hover:border-accent",
+                      ].join(" ")}
+                    >
+                      <Icon name="check" className="h-2.5 w-2.5" strokeWidth={3} />
+                    </button>
+                    <span className={`min-w-0 flex-1 text-[12.5px] ${s.done ? "text-muted line-through" : "text-ink/90"}`}>
+                      {s.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteStep(task.id, s.id)}
+                      aria-label={`Delete step "${s.title}"`}
+                      className="rounded p-0.5 text-muted/0 transition hover:text-danger group-hover/step:text-muted/60"
+                    >
+                      <Icon name="x" className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-1 flex items-center gap-1.5 px-1">
+              <Icon name="plus" className="h-3 w-3 shrink-0 text-muted" />
+              <input
+                value={stepDraft}
+                onChange={(e) => setStepDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitStep();
+                  }
+                }}
+                placeholder="Add a step and press enter"
+                aria-label="Add checklist step"
+                className="min-w-0 flex-1 bg-transparent py-0.5 text-[12.5px] text-ink outline-none placeholder:text-muted/60"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* actions */}
-      <button
-        type="button"
-        onClick={() => onDelete(task.id)}
-        aria-label={`Delete "${task.title}"`}
-        className="mt-0.5 rounded-lg p-1.5 text-muted/50 transition hover:bg-danger/12 hover:text-danger focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-      >
-        <Icon name="trash" className="h-4 w-4" />
-      </button>
+      <div className="mt-0.5 flex flex-col gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+        <button
+          type="button"
+          onClick={() => onDuplicate(task.id)}
+          aria-label={`Duplicate "${task.title}"`}
+          className="rounded-lg p-1.5 text-muted/50 transition hover:bg-surface2 hover:text-ink"
+        >
+          <Icon name="copy" className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(task.id)}
+          aria-label={`Delete "${task.title}"`}
+          className="rounded-lg p-1.5 text-muted/50 transition hover:bg-danger/12 hover:text-danger"
+        >
+          <Icon name="trash" className="h-4 w-4" />
+        </button>
+      </div>
     </li>
   );
 }

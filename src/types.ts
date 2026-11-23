@@ -2,6 +2,12 @@ import type { Recurrence } from "./lib/recurrence";
 
 export type Priority = 0 | 1 | 2;
 
+export interface Step {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -16,6 +22,8 @@ export interface Task {
   recurrence?: Recurrence;
   /** id of the task this occurrence was created from */
   spawnedFrom?: string;
+  /** checklist inside the task */
+  steps?: Step[];
 }
 
 export interface TaskList {
