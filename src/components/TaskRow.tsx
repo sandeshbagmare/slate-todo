@@ -24,6 +24,7 @@ interface TaskRowProps {
   onCyclePriority: (id: string) => void;
   onSetDue: (id: string, due: string | null) => void;
   onSetReminder: (id: string, at: number | null) => void;
+  onToggleMyDay: (id: string) => void;
   onAddStep: (id: string, title: string) => void;
   onToggleStep: (id: string, stepId: string) => void;
   onDeleteStep: (id: string, stepId: string) => void;
@@ -55,6 +56,7 @@ export function TaskRow({
   onCyclePriority,
   onSetDue,
   onSetReminder,
+  onToggleMyDay,
   onAddStep,
   onToggleStep,
   onDeleteStep,
@@ -378,6 +380,20 @@ export function TaskRow({
       </div>
 
       {/* actions */}
+      {/* star — always visible, it is the My Day affordance */}
+      <button
+        type="button"
+        onClick={() => onToggleMyDay(task.id)}
+        aria-pressed={Boolean(task.myDay)}
+        aria-label={task.myDay ? `Remove "${task.title}" from My Day` : `Add "${task.title}" to My Day`}
+        className={[
+          "mt-0.5 rounded-lg p-1.5 transition hover:bg-accent/10",
+          task.myDay ? "text-accent" : "text-muted/35 hover:text-accent",
+        ].join(" ")}
+      >
+        <Icon name="star" className="h-4 w-4" fill={task.myDay ? "currentColor" : "none"} />
+      </button>
+
       <div className="mt-0.5 flex flex-col gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-within:opacity-100">
         <button
           type="button"

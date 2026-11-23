@@ -131,7 +131,7 @@ def main() -> int:
         m.goto(BASE, wait_until="networkidle")
         m.wait_for_timeout(700)
         tabs = m.locator("nav[aria-label=Main] button")
-        check("five bottom tabs", tabs.count() == 5, str(tabs.count()))
+        check("six bottom tabs", tabs.count() == 6, str(tabs.count()))
         m.locator("nav[aria-label=Main]").get_by_role("button", name="Stats").click()
         m.wait_for_timeout(400)
         check("stats reachable on phone", m.locator("h1").first.inner_text().startswith("Stats"))
@@ -240,7 +240,22 @@ def main() -> int:
         check("reminder survives a reload", "6:45" in kept, kept.strip())
         page.screenshot(path=str(SHOTS / "v13-reminder.png"))
 
-        # 13. no console errors anywhere
+        # 13. My Day
+        page.locator("aside").get_by_role("button", name="Today").click()
+        page.wait_for_timeout(350)
+        page.locator("ul[aria-label=Tasks] li").first.locator("button[aria-label$='to My Day']").click()
+        page.wait_for_timeout(400)
+        starred = page.locator("ul[aria-label=Tasks] li").first.locator("button[aria-pressed=true]").count()
+        check("star marks a task for My Day", starred == 1)
+        page.locator("aside").get_by_role("button", name="My Day").click()
+        page.wait_for_timeout(400)
+        check("My Day lists the starred task", page.locator("ul[aria-label=Tasks] li").count() == 1)
+        badge = page.locator("aside").get_by_role("button", name="My Day").inner_text()
+        check("My Day badge counts open work", "1" in badge, " ".join(badge.split()))
+        check("My Day heading", page.locator("h1").first.inner_text().strip().startswith("My Day"))
+        page.screenshot(path=str(SHOTS / "v14-myday.png"))
+
+        # 14. no console errors anywhere
         check("no console errors", len(errors) == 0, "; ".join(errors[:3]))
         browser.close()
 

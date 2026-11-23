@@ -26,6 +26,8 @@ export interface Task {
   steps?: Step[];
   /** epoch ms when the reminder should fire */
   remindAt?: number | null;
+  /** date key the task was pulled into My Day for (carries over until done) */
+  myDay?: string | null;
 }
 
 export interface TaskList {
@@ -34,7 +36,7 @@ export interface TaskList {
   color: string;
 }
 
-export type SmartView = "calendar" | "today" | "upcoming" | "stats" | "all" | "completed";
+export type SmartView = "calendar" | "today" | "myday" | "upcoming" | "stats" | "all" | "completed";
 export type ViewId = SmartView | `list:${string}`;
 export type SortKey = "manual" | "due" | "priority" | "created";
 export type StatusFilter = "all" | "active" | "done";

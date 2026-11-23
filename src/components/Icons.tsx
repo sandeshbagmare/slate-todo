@@ -24,6 +24,7 @@ import {
   Trash2,
   BarChart3,
   Bell,
+  Star,
   Command,
   Copy,
   Download,
@@ -61,6 +62,7 @@ const GLYPHS = {
   repeat: Repeat2,
   chart: BarChart3,
   bell: Bell,
+  star: Star,
   command: Command,
   copy: Copy,
   download: Download,
@@ -81,17 +83,21 @@ export function Icon({
   name,
   className = "h-4 w-4",
   strokeWidth = 1.75,
+  fill = "none",
 }: {
   name: IconName;
   className?: string;
   /** only raise this for tick marks that must read at 12px */
   strokeWidth?: number;
+  /** solid glyphs such as an active star */
+  fill?: string;
 }) {
   const Glyph = GLYPHS[name];
   return (
     <Glyph
       className={className}
       strokeWidth={strokeWidth}
+      fill={fill}
       absoluteStrokeWidth
       aria-hidden="true"
       focusable="false"

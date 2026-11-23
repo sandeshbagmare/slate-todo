@@ -5,6 +5,7 @@ import type { ViewId } from "../types";
 const TABS: { id: ViewId; label: string; icon: IconName }[] = [
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "today", label: "Today", icon: "target" },
+  { id: "myday", label: "My Day", icon: "star" },
   { id: "upcoming", label: "Upcoming", icon: "clock" },
   { id: "stats", label: "Stats", icon: "chart" },
 ];
@@ -28,7 +29,7 @@ export function MobileTabs({
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden"
       aria-label="Main"
     >
-      <div className="mx-auto grid max-w-[520px] grid-cols-5">
+      <div className="mx-auto grid max-w-[520px] grid-cols-6">
         {TABS.map((tab) => {
           const active = view === tab.id;
           return (

@@ -108,6 +108,9 @@ src/
   Unknown words stay in the title, so plain typing is never mangled.
 - **Command palette** — `Ctrl/⌘ K`: fuzzy search live tasks, jump to any view, complete a
   task, toggle theme, export/import, open shortcuts.
+- **My Day** — star any task (the ☆ on the row) and it joins today's short list
+  whatever its due date; open items carry over until they are done, and the
+  view has its own sidebar badge, phone tab and palette command.
 - **Reminders** — set a time on any task; Android gets a real OS notification
   (exact alarm + boot restore), the browser falls back to a notification while the
   tab is open. Permission is requested the first time you set one.
@@ -123,7 +126,7 @@ src/
 
 ```bash
 npm run dev            # terminal 1
-python tests/e2e.py    # terminal 2 — 38 checks, screenshots in shots/
+python tests/e2e.py    # terminal 2 — 42 checks, screenshots in shots/
 ```
 
 Covers calendar landing, stats rendering, quick-add parsing, streak logging, recurring
